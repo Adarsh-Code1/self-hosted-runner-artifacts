@@ -1,0 +1,47 @@
+
+name: Build and Publish Docker Artifact
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-publish:
+    runs-on: [self-hosted, Linux, X64]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check Docker
+        run: docker --version
+
+      - name: Build Docker image
+        run: docker build -t self-hosted-artifact-demo:${GITHUB_SHA} .
+
+      - name: Create artifact directory
+        run: mkdir -p artifacts
+
+      - name: Export Docker image as TAR
+        run: |
+          docker save \
+            -o artifacts/docker-image.tar \
+            self-hosted-artifact-demo:${GITHUB_SHA}
+
+      - name: Compress TAR into ZIP
+        run: |
+          zip -j artifacts/docker-image.zip \
+            artifacts/docker-image.tar
+
+      - name: Publish GitHub Actions artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image-artifact
+          path: artifacts/docker-image.zip
+          if-no-files-found: error
+          retention-days: 7
